@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"go-api-dashboard/config"
 	"go-api-dashboard/database"
 	"go-api-dashboard/routes"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -19,5 +19,5 @@ func main() {
 	app := fiber.New()
 	routes.SetupRoutes(app)
 
-	log.Fatal("Server is Running in Port !", app.Listen(":3000"))
+	fmt.Println("Server is Running in Port !", app.Listen(":3000"))
 }
