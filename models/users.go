@@ -9,4 +9,8 @@ type User struct {
 	Password  string    `gorm:"not null" json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	//relasi untuk category dan expense
+	Category []Category `json:"categories,omitempty"`
+	Expense  []Expense  `json:"expenses,omitempty"`
 }

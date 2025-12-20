@@ -22,6 +22,10 @@ func CreateTodoHandler(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req);err != nil {
 		return c.Status(400).JSON(fiber.Map{"invalid" : "invalid payload"})
 	}
+
+	if req.Status == "" {
+		req.Status = "pending"
+	}
 	//membuat todo baru
 	todo := models.Todo{
 		Title:       req.Title,
