@@ -12,6 +12,6 @@ type Expense struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 
 	//relasi untuk category
-	User     User     `json:"user" gorm:"foreginKey:UserID"`
+	User     User     `json:"-" gorm:"foreginKey:UserID"`
 	Category Category `json:"category" gorm:"foreginKey:CategoryID"`
 }
