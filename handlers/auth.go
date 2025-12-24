@@ -4,8 +4,10 @@ import (
 	"go-api-dashboard/database"
 	"go-api-dashboard/models"
 	"go-api-dashboard/utils"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -50,26 +52,59 @@ func RegisterHandler(c *fiber.Ctx) error {
 func LoginHandler(c *fiber.Ctx) error {
 	var req LoginRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"Invalid" : "error payload"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid payload"})
 	}
 
 	var user models.User
 	database.DB.Where("email = ?", req.Email).First(&user)
 	if user.ID == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid email or password"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid email or password"})
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid email or password"})
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid email or password"})
 	}
 
-	token, err := utils.GenerateJWT(user.ID, user.Email)
+	// 🔐 generate tokens
+	accessToken, err := utils.GenerateJWT(user.ID, user.Email)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
+		return c.Status(500).JSON(fiber.Map{"error": "failed to generate access token"})
 	}
-	return c.Status(200).JSON(fiber.Map{"message": "Login successful", "token": token})
+
+	refreshToken, err := utils.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to generate refresh token"})
+	}
+
+	// 🍪 simpan refresh token di cookie
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		HTTPOnly: true,
+		Secure:   true,     // WAJIB kalau production (https)
+		SameSite: "None",   // karena FE & BE beda domain
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+	})
+
+	return c.JSON(fiber.Map{
+		"access_token": accessToken,
+	})
 }
+
+func LogoutHandler(c *fiber.Ctx) error {
+	//hapus refresh token
+	c.Cookie(&fiber.Cookie{
+		Name: "refresh_token",
+		Value: "",
+		HTTPOnly: true,
+		Secure: true,
+		SameSite: "none",
+		Expires: time.Now().Add(-time.Hour),
+	})
+
+	return c.JSON(fiber.Map{"message" : "logout success"})
+}
+
 
 
 func Me(c *fiber.Ctx) error {
@@ -82,4 +117,31 @@ func Me(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(fiber.Map{"data": user})
+}
+
+
+func RefreshToken(c *fiber.Ctx) error {
+	RefreshToken := c.Cookies("refresh_token")
+	if RefreshToken == "" {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	token, err := utils.VerifyRefreshToken(RefreshToken)
+	if err != nil || !token.Valid {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	userID := uint(claims["user_id"].(float64))
+
+	var user models.User
+
+	database.DB.Find(&user, userID)
+
+	accessToken, err := utils.GenerateJWT(user.ID, user.Email)
+	if err != nil {
+		return c.SendStatus(fiber.StatusInternalServerError)
+	} 
+
+	return c.JSON(fiber.Map{"access_token" : accessToken})
 }

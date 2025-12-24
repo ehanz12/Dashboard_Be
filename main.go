@@ -22,7 +22,7 @@ func main() {
 		AllowOrigins: "http://localhost:5173,https://dashboardreihan.vercel.app,https://www.reihan.biz.id", // url yang boleh akses
 		AllowMethods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",// method yang boleh dilakukan
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization", //content-type header wajib
-		AllowCredentials: false, //jika pake jwt
+		AllowCredentials: true, //jika pake jwt
 	}))
 	routes.SetupRoutes(app)
 

@@ -18,7 +18,7 @@ func JWTMiddleware(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error" : "invalid token format"})
 	}
 	tokenStr := strings.TrimPrefix(auth, "Bearer ")//menghilangkan "Bearer " dari token
-	token, err := utils.VerifyJWT(tokenStr)//memvalidasi token
+	token, err := utils.VerifyAccessToken(tokenStr)//memvalidasi token
 	if err != nil || !token.Valid {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid or expired JWT"})
 	}
